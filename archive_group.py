@@ -23,9 +23,11 @@ Media of linked youtube files and other web pages is not archived.
 #TODO: Grundläggande gruppinfodata.
 
 graph = dict()
+graph["data"] = []
 outfolder = ""
 VERSION = "0.1"
 starttime = datetime.now()
+paging_limit = 1000
 
 
 def set_up_output_dir(folder_name):
@@ -76,12 +78,34 @@ def add_archive_metadata():
 def load_graph(group_id):
     """Load json data for <group_id> and print basic stats."""
     global graph
-    url = "https://graph.facebook.com/v2.6/%s/feed?fields=%s&limit=1000&access_token=%s" % (group_id, config.fields, config.access_token)
 
-    # get raw data and decode json
-    r = requests.get(url)
-    graph = r.json()
-    print_stats()
+    url = "https://graph.facebook.com/v2.6/%s/feed?fields=%s&limit=%s&access_token=%s" % (group_id, config.fields, paging_limit, config.access_token)
+
+    load_json(url)
+
+
+
+
+def load_json(url):
+    global graph
+
+
+    try:
+        r = requests.get(url)
+        resultjson = r.json()
+
+        graph["data"].extend(resultjson["data"])
+
+        print_stats()
+
+        # load rest of paged data
+        if resultjson.has_key("paging") and resultjson["paging"].has_key("next"):
+            print "loading next page"
+            load_json(resultjson["paging"]["next"])
+
+    except:
+        print "Error: %s" % sys.exc_info()[0]
+
 
 
 
@@ -98,6 +122,10 @@ def hydrate_media():
     """
     Fetch binary files in graph data. Adds the local path to
     properties beginning with X-FA_. """
+
+    if config.hydrate_media == False:
+        #skip media harvesting
+        return
 
     fileslist = []
     for post in graph["data"]:
@@ -146,18 +174,10 @@ def save_snapshot(group_id):
 
 
 def print_stats():
-    print "Post count: %s" % len(graph["data"])
-    for post in graph["data"]:
-        print "Post id: %s" % post["id"]
-        if post.has_key("comments"):
-            print "Comments: %s" % len(post["comments"]["data"])
-        else:
-            print "Comments: 0"
+    """Print graph data stats"""
 
-        if post.has_key("likes"):
-            print "Likes: %s" % len(post["likes"]["data"])
-        else:
-            print "Likes: 0"
+    print "\nPost count: %s" % len(graph["data"])
+
 
 
 if __name__ == "__main__":
