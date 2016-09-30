@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Arkiv för facebookgrupp {{X-FA_group_id}}</title>
+    <meta name="generator" content="Farchiver 0.1">
+    <style type="text/css">
+        body {
+            font-family: sans-serif;
+            font-size: 12px;
+        }
+
+        .archive {
+            width: 80%;
+            max-width: 1100px;
+            margin: 20px auto 20px auto;
+        }
+
+        .archivemeta {
+            border: solid 1px #e1e1e1;
+            border-radius: 4px;
+            padding: 8px 6px;
+            margin: 0 0 1em 0;
+        }
+
+        .archivemeta dl {
+            margin:0;
+        }
+
+        .post {
+            border-bottom: 1px solid #ccc;
+            margin-bottom: 1em;
+        }
+
+        .meta {
+            clear:both;
+            height: 1.3em;
+            background-color: #efefef;
+            padding: 4px 7px;
+            margin-bottom: 10px;
+        }
+
+        .meta .from {
+            float:left;
+            margin-right: 20px;
+        }
+
+        .meta .created {
+            float:right;
+        }
+
+        .post > .comment {
+            margin-left:30px;
+        }
+
+        .post .image img {
+            width:400px;
+            margin: 4px 7px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="archive">
+        <h1>Arkiv {{title}}</h1>
+
+        <div class="archivemeta">
+            <dl>
+                <dt>Starttid</dt>
+                <dd>{{X-FA_start_time}}</dd>
+
+                <dt>Konfiguration för fält</dt>
+                <dd>{{X-FA_config_fields}}</dd>
+
+                <dt>Skriptversion</dt>
+                <dd>{{X-FA_script_version}}</dd>
+            </dl>
+
+        </div>
+        {{#each data}}
+        <div class="post">
+            <div class="body">
+                <div class="meta">
+                    <div class="from"><a href="https://www.facebook.com/{{from/id}}">{{from/name}}</a></div>
+                    <div class="created"><a href="{{permalink_url}}">{{created_time}}</a></div>
+                </div>
+                <p>{{message}}</p>
+                {{#if X-FA_full_picture}}
+                    {{#if X-FA_source}}
+                    <div class="video">
+                        <video controls="play" src="media/{{X-FA_source}}" poster="media/{{X-FA_full_picture}}"></video>
+                    </div>
+                    {{else}}
+                    <div class="image">
+                        <img src="media/{{X-FA_full_picture}}" alt="{{caption}}">
+                    </div>
+                    {{/if}}
+                {{/if}}
+                {{#if link}}
+                <p class="link">
+                    Link: <a href="{{link}}">{{link}}</a>
+                </p>
+                {{/if}}
+            </div>
+
+            {{#each comments/data}}
+            <div class="comment">
+                <div class="meta">
+                    <div class="from"><a href="https://www.facebook.com/{{from/id}}">{{from/name}}</a></div>
+                    <div class="created"><a href="{{permalink_url}}">{{created_time}}</a></div>
+                </div>
+                <div class="message">{{message}}</div>
+                <p>Likes {{like_count}}</p>
+            </div>
+            {{/each}}
+        </div>
+        {{/each}}
+    </div>
+</body>
+</html>
