@@ -6,7 +6,8 @@ import os
 import config
 import sys
 from multiprocessing import Pool
-from selenium import webdriver
+import logging
+import xxhash
 
 """
 A simple library to archive a Facbook group and associated media files.
@@ -17,7 +18,6 @@ file in the script folder (see readme).
 Media of linked youtube files and other web pages is not archived.
 """
 
-#TODO: Skriv arkivmetadata X-FA...
 #TODO: Gör till riktig modul istf globala variabler
 #TODO: Riktig loggning
 #TODO: Grundläggande gruppinfodata.
@@ -27,32 +27,36 @@ graph["data"] = []
 outfolder = ""
 VERSION = "0.1"
 starttime = datetime.now()
-paging_limit = 1000
+paging_limit = 25
 
 
-def set_up_output_dir(folder_name):
+
+def set_up_output_dir(basedir, folder_name):
     """Create ouput folder"""
     global outfolder
-    if not os.path.exists(folder_name):
-        os.makedirs(folder_name)
+    if not os.path.exists(os.path.join(basedir, folder_name)):
+        os.makedirs(os.path.join(basedir, folder_name))
 
-    outfolder = folder_name
-    print "Destination: " + outfolder
+    outfolder = os.path.join(basedir, folder_name)
 
 
 
 def download_file(linkpair):
     """Download large binary files safely"""
     global outfolder
+
     url = linkpair[0]
     local_filename = linkpair[1]
 
-    if not os.path.exists(outfolder + "/media"):
-        os.makedirs(outfolder + "/media")
+    logging.info("Requesting binary file: %s" % url)
 
     r = requests.get(url, stream=True)
 
     filepath = os.path.join(outfolder, "media", local_filename)
+    logging.info("Writing to %s" % filepath)
+
+    # Calculate file checksum
+    hashv = xxhash.xxh64()
 
     with open(filepath, 'wb') as f:
         # handle download of large files in chunks
@@ -60,8 +64,10 @@ def download_file(linkpair):
             if chunk:
                 f.write(chunk)
                 f.flush()
+                hashv.update(chunk)
 
-    print "Wrote: " + filepath
+    logging.info("Wrote binary file: %s, xxhash: %s" % (filepath, hashv.hexdigest()))
+
     return filepath
 
 
@@ -76,8 +82,6 @@ def add_archive_metadata():
 
 
 def load_graph(group_id):
-    """Load json data for <group_id> and print basic stats."""
-    global graph
 
     url = "https://graph.facebook.com/v2.6/%s/feed?fields=%s&limit=%s&access_token=%s" % (group_id, config.fields, paging_limit, config.access_token)
 
@@ -89,8 +93,9 @@ def load_graph(group_id):
 def load_json(url):
     global graph
 
-
     try:
+        logging.info("Loading %s" % url)
+
         r = requests.get(url)
         resultjson = r.json()
 
@@ -100,11 +105,11 @@ def load_json(url):
 
         # load rest of paged data
         if resultjson.has_key("paging") and resultjson["paging"].has_key("next"):
-            print "loading next page"
+            logging.info("Next page: %s" % resultjson["paging"]["next"])
             load_json(resultjson["paging"]["next"])
 
     except:
-        print "Error: %s" % sys.exc_info()[0]
+        logging.error(sys.exc_info()[0])
 
 
 
@@ -125,6 +130,7 @@ def hydrate_media():
 
     if config.hydrate_media == False:
         #skip media harvesting
+        logging.info("Skipping media files in this harvest (config.hydrate_media = False)")
         return
 
     fileslist = []
@@ -139,7 +145,12 @@ def hydrate_media():
             fileslist.append((post["source"], local_filename))
             post["X-FA_source"] = local_filename
 
-    print "Files to download: %s" % len(fileslist)
+    logging.info("Found %s files to download" % len(fileslist))
+
+    # set up output directory for media files
+    if not os.path.exists(os.path.join(outfolder,"media")):
+        logging.info("Creating destination dir: %s" % os.path.join(outfolder,"media"))
+        os.makedirs(os.path.join(outfolder,"media"))
 
     #batch download in parallel
     p = Pool(4)
@@ -148,9 +159,7 @@ def hydrate_media():
 
 
 def archive_group(group_id):
-    # Output destination
-    output_folder_name = "%s_%s" % (group_id, datetime.now().strftime('%Y%m%d_%H%M%S'))
-    set_up_output_dir(output_folder_name)
+    global outfolder
 
     # load graph data
     load_graph(group_id)
@@ -159,25 +168,27 @@ def archive_group(group_id):
     hydrate_media()
 
     # save data file
-    with open(os.path.join(output_folder_name, "archive_%s.json" % group_id), 'wb') as fp:
+    with open(os.path.join(outfolder, "archive_%s.json" % group_id), 'wb') as fp:
+        logging.info("Writing JSON to %s" % os.path.join(outfolder, "archive_%s.json" % group_id))
         json.dump(graph, fp)
-
-
-def save_snapshot(group_id):
-    driver = webdriver.PhantomJS()
-    #driver.set_window_size(1024, 768) # optional
-    driver.get("https://www.facebook.com/groups/%s/" % group_id)
-    driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-    driver.save_screenshot('archive_%s.pdf' % group_id) # save a screenshot to disk
-    #sbtn = driver.find_element_by_css_selector('button.gbqfba')
-    sbtn.click()
+        logging.info("Done!")
 
 
 def print_stats():
     """Print graph data stats"""
 
-    print "\nPost count: %s" % len(graph["data"])
+    logging.info("Post count: %s" % len(graph["data"]))
 
+
+def setup_logging(outfile):
+    logging.basicConfig(filename=outfile,level=logging.DEBUG)
+    console = logging.StreamHandler()
+    console.setLevel(logging.INFO)
+    # set a format which is simpler for console use
+    formatter = logging.Formatter('%(name)-12s:%(levelname)-8s %(message)s')
+
+    console.setFormatter(formatter)
+    logging.getLogger('').addHandler(console)
 
 
 if __name__ == "__main__":
@@ -186,7 +197,17 @@ if __name__ == "__main__":
     if config.access_token:
         starttime = datetime.now()
         group_id = sys.argv[1]
-        print "Archiving %s" % group_id
+
+
+        # Output destination
+        output_folder_name = "%s_%s" % (group_id, datetime.now().strftime('%Y%m%d_%H%M%S'))
+        set_up_output_dir(config.data_dir, output_folder_name)
+
+        setup_logging(os.path.join(outfolder, group_id + ".log"))
+
+        logging.info("Archiving group %s" % group_id)
+
         archive_group(group_id)
+        logging.info("Ending this run")
     else:
-        print "Please add an access token in config.py"
+        print "Error: Please add an access token in config.py"
