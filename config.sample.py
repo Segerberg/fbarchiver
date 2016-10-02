@@ -13,3 +13,6 @@ fields = "comments.limit(1000){message,like_count,created_time,from},from,messag
 # set to true if media files should be fetched
 hydrate_media = False
 
+# Root folder for archive data - data will be created here
+data_dir = "/path/to/fbarchive"
+
