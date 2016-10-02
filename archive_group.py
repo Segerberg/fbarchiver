@@ -78,12 +78,15 @@ def add_archive_metadata():
     graph["X-FA_start_time"] = starttime
     graph["X-FA_group_id"] = group_id
     graph["X-FA_config_fields"] = config.fields
-
+    
+def since_handler():
+    since = calendar.timegm(time.strptime(config.since, '%d/%m/%Y'))
+    return since
 
 
 def load_graph(group_id):
 
-    url = "https://graph.facebook.com/v2.6/%s/feed?fields=%s&limit=%s&access_token=%s" % (group_id, config.fields, paging_limit, config.access_token)
+    url = "https://graph.facebook.com/v2.4/%s/feed?fields=%s&since=%s&limit=%s&access_token=%s" % (group_id, config.fields,since_handler(), paging_limit, config.access_token)
 
     load_json(url)
 
