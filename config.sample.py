@@ -16,3 +16,6 @@ hydrate_media = False
 # Root folder for archive data - data will be created here
 data_dir = "/path/to/fbarchive"
 
+#Set the date from where you wish to start grabbing
+since = "04/02/2004"
+
