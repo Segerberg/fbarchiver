@@ -19,7 +19,7 @@ Konfigurera inställningar i filen config.py (utgå från config.sample.py). Du 
 
 För att arkivera en grupp, ta reda på gruppens ID-nummer och kör:
 
-`$ python archive_group.py 1505183853108568`
+`$ python archive_group.py 1505183853108568 dd/mm/yyyy`
 
 Resultatet sparas i en katalog med namnet `<grupp-ID>_<tidsstämpel>`. I katalogen hittar du en json-fil med data från Facebook samt en mediakatalog med de filer som hämtats ner.
 
