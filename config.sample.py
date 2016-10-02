@@ -8,8 +8,7 @@ app_secret = "abc123"
 access_token = "%s|%s" % (app_id, app_secret)
 
 # Fields in query
-fields = "comments.limit(1000){message,like_count,created_time,from},from,message,created_time,full_picture,link,updated_time,caption,source,likes,permalink_url"
-
+fields = "comments.limit(1){message,like_count,created_time,from,comments{message,from,created_time,like_count,likes,comments{message,from,created_time,like_count,likes}},likes},from,message,created_time,full_picture,link,updated_time,caption,source,likes,permalink_url"
 # set to true if media files should be fetched
 hydrate_media = False
 
